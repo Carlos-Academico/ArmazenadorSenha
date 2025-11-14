@@ -29,12 +29,13 @@ class PasswordAdapter(
         holder.bind(getItem(position), onViewClicked)
     }
 
-
+    // Método usado pela Activity para carregar/atualizar a lista COMPLETA de dados.
     fun updateFullList(list: List<PasswordData>) {
         fullList = list
         super.submitList(list)
     }
 
+    // Método para filtrar a lista
     fun filter(query: String?) {
         val filteredList = if (query.isNullOrBlank()) {
             fullList

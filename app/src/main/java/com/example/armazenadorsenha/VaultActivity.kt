@@ -9,8 +9,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.armazenadorsenha.adapter.PasswordAdapter
 import com.example.armazenadorsenha.dao.PasswordData
 import com.example.armazenadorsenha.databinding.ActivityVaultBinding
-import com.example.armazenadorsenha.databinding.DialogAddPasswordBinding
+import com.example.armazenadorsenha.databinding.DialogAddPasswordBinding // Reutilizado para Edit/View
 import java.util.concurrent.atomic.AtomicInteger
+
+// IMPORTANTE: Assumindo que você tem as classes EncryptionHelper e o modelo PasswordData
 
 class VaultActivity : AppCompatActivity() {
 
@@ -18,6 +20,7 @@ class VaultActivity : AppCompatActivity() {
     private lateinit var masterPassword: String
     private lateinit var adapter: PasswordAdapter
 
+    // A lista de senhas, que NÃO é persistente
     private val passwordList = mutableListOf<PasswordData>()
     private val nextId = AtomicInteger(1)
 
@@ -44,23 +47,11 @@ class VaultActivity : AppCompatActivity() {
         }
     }
 
-    /*
-    private fun loadSavedData() {
-        val loadedList = repository.loadPasswords()
-
-        passwordList.addAll(loadedList)
-
-        if (loadedList.isNotEmpty()) {
-            val maxId = loadedList.maxOf { it.id }
-            nextId.set(maxId + 1)
-        }
-
-        // NOVO USO: Popula a lista completa do adapter
-        adapter.updateFullList(passwordList.toList())
-    }
-    */
-
+    // Método para abrir o diálogo de Visualização/Edição
     private fun onViewClicked(entry: PasswordData) {
+        // Reutiliza o binding do diálogo de adição para visualização e edição
+        val dialogBinding = DialogAddPasswordBinding.inflate(layoutInflater)
+
         try {
             val decryptedPassword = EncryptionHelper.decrypt(
                 entry.encryptedPasswordBase64,
@@ -68,10 +59,35 @@ class VaultActivity : AppCompatActivity() {
                 masterPassword
             )
 
+            // 1. Pré-preencher campos com os dados existentes
+            dialogBinding.editService.setText(entry.serviceTitle)
+            dialogBinding.editUsername.setText(entry.username)
+            dialogBinding.editPassword.setText(decryptedPassword)
+
+            // 2. Configurar o diálogo
             AlertDialog.Builder(this)
-                .setTitle(entry.serviceTitle)
-                .setMessage("Usuário: ${entry.username}\nSenha: $decryptedPassword")
-                .setPositiveButton("Fechar", null)
+                .setTitle("Detalhes e Edição: ${entry.serviceTitle}")
+                .setView(dialogBinding.root)
+
+                // Botão de Excluir
+                .setNeutralButton("EXCLUIR") { _, _ ->
+                    confirmDelete(entry)
+                }
+
+                // Botão de Salvar/Editar
+                .setPositiveButton("SALVAR EDIÇÕES") { _, _ ->
+                    // Coleta os dados editados
+                    val newService = dialogBinding.editService.text.toString()
+                    val newUsername = dialogBinding.editUsername.text.toString()
+                    val newPlainPassword = dialogBinding.editPassword.text.toString()
+
+                    if (newService.isNotBlank() && newPlainPassword.isNotBlank()) {
+                        editExistingPassword(entry, newService, newUsername, newPlainPassword)
+                    } else {
+                        Toast.makeText(this, "Serviço e Senha são obrigatórios.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .setNegativeButton("FECHAR", null)
                 .show()
 
         } catch (e: SecurityException) {
@@ -84,11 +100,11 @@ class VaultActivity : AppCompatActivity() {
         binding.recyclerViewVault.layoutManager = LinearLayoutManager(this)
         binding.recyclerViewVault.adapter = adapter
 
+        // Popula a lista completa
         adapter.updateFullList(passwordList.toList())
     }
 
     private fun showAddPasswordDialog() {
-        // ... (lógica do Dialog Add Password) ...
         val dialogBinding = DialogAddPasswordBinding.inflate(layoutInflater)
 
         AlertDialog.Builder(this)
@@ -124,6 +140,62 @@ class VaultActivity : AppCompatActivity() {
         })
     }
 
+    // --- MÉTODO: CONFIRMAR EXCLUSÃO ---
+    private fun confirmDelete(entry: PasswordData) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirmação de Exclusão")
+            .setMessage("Tem certeza que deseja EXCLUIR a senha para '${entry.serviceTitle}'? Esta ação é irreversível.")
+            .setPositiveButton("Sim, Excluir") { _, _ ->
+                deletePassword(entry)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    // --- MÉTODO: DELETAR SENHA ---
+    private fun deletePassword(entry: PasswordData) {
+        // Remove o item da lista em memória
+        val removed = passwordList.removeIf { it.id == entry.id }
+
+        if (removed) {
+            // Atualiza o Adapter com a lista modificada (importante para o filtro)
+            adapter.updateFullList(passwordList.toList())
+
+            Toast.makeText(this, "Senha para ${entry.serviceTitle} removida.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // --- MÉTODO: EDITAR SENHA EXISTENTE ---
+    private fun editExistingPassword(
+        originalEntry: PasswordData,
+        newService: String,
+        newUsername: String,
+        newPlainPassword: String
+    ) {
+        // Criptografa a nova senha
+        val (encryptedPass, iv) = EncryptionHelper.encrypt(newPlainPassword, masterPassword)
+
+        // Cria uma nova entrada com o ID original
+        val updatedEntry = originalEntry.copy(
+            serviceTitle = newService,
+            username = newUsername,
+            encryptedPasswordBase64 = encryptedPass,
+            ivBase64 = iv
+        )
+
+        // Encontra e substitui o item na lista em memória
+        val index = passwordList.indexOfFirst { it.id == originalEntry.id }
+        if (index != -1) {
+            passwordList[index] = updatedEntry
+
+            // Atualiza o Adapter com a lista modificada
+            adapter.updateFullList(passwordList.toList())
+
+            Toast.makeText(this, "Senha para ${newService} atualizada.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // --- MÉTODO: ADICIONAR NOVA SENHA ---
     private fun addNewPassword(service: String, username: String, plainPassword: String) {
         val (encryptedPass, iv) = EncryptionHelper.encrypt(plainPassword, masterPassword)
 
