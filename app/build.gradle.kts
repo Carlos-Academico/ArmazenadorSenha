@@ -62,4 +62,5 @@ dependencies {
     implementation("androidx.cardview:cardview:1.0.0") // Mantenha, se libs.cardview não existir
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("io.coil-kt:coil:2.6.0")
 }

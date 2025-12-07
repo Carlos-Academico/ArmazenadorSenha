@@ -9,10 +9,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.armazenadorsenha.adapter.PasswordAdapter
 import com.example.armazenadorsenha.dao.PasswordData
 import com.example.armazenadorsenha.databinding.ActivityVaultBinding
-import com.example.armazenadorsenha.databinding.DialogAddPasswordBinding // Reutilizado para Edit/View
+import com.example.armazenadorsenha.databinding.DialogAddPasswordBinding
 import java.util.concurrent.atomic.AtomicInteger
 
-// IMPORTANTE: Assumindo que você tem as classes EncryptionHelper e o modelo PasswordData
 
 class VaultActivity : AppCompatActivity() {
 
@@ -20,7 +19,7 @@ class VaultActivity : AppCompatActivity() {
     private lateinit var masterPassword: String
     private lateinit var adapter: PasswordAdapter
 
-    // A lista de senhas, que NÃO é persistente
+    // A lista de senhas, nÃO persisti
     private val passwordList = mutableListOf<PasswordData>()
     private val nextId = AtomicInteger(1)
 
@@ -96,7 +95,8 @@ class VaultActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = PasswordAdapter(onViewClicked = ::onViewClicked)
+        // MUDANÇA: Passa 'this' (o Contexto) para o Adapter
+        adapter = PasswordAdapter(context = this, onViewClicked = ::onViewClicked)
         binding.recyclerViewVault.layoutManager = LinearLayoutManager(this)
         binding.recyclerViewVault.adapter = adapter
 

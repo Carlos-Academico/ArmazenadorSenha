@@ -23,10 +23,7 @@ object EncryptionHelper {
         return SecretKeySpec(key, ALGORITHM)
     }
 
-    // --- Criptografar ---
-    /**
-     * Criptografa o texto. Retorna a senha cifrada e o IV (ambos em Base64).
-     */
+    // Criptografar
     fun encrypt(plainText: String, masterPassword: String): Pair<String, String> {
         val key = deriveKey(masterPassword)
         val cipher = Cipher.getInstance(TRANSFORMATION)
@@ -41,11 +38,7 @@ object EncryptionHelper {
         return Pair(cipherTextBase64, ivBase64)
     }
 
-    // --- Decriptografar ---
-    /**
-     * Decriptografa a senha usando a chave derivada da Senha Mestra e o IV.
-     * Lança SecurityException se a senha mestre for incorreta.
-     */
+    // Decriptografar
     fun decrypt(cipherTextBase64: String, ivBase64: String, masterPassword: String): String {
         try {
             val key = deriveKey(masterPassword)
