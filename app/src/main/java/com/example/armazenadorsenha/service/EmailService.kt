@@ -100,6 +100,86 @@ object EmailService {
         }.start()
     }
 
+    fun sendUpdateNotification(recipientEmail: String, serviceTitle: String, username: String) {
+        Thread {
+            try {
+                // ... (Configuração da sessão SMTP e criação da mensagem MimeMessage) ...
+
+                val props = Properties()
+                props["mail.smtp.auth"] = "true"
+                props["mail.smtp.starttls.enable"] = "true"
+                props["mail.smtp.host"] = SMTP_HOST
+                props["mail.smtp.port"] = SMTP_PORT
+
+                // 1. Cria a sessão de e-mail
+                val session = Session.getInstance(props, object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication {
+                        return PasswordAuthentication(SENDER_EMAIL, SENDER_PASSWORD)
+                    }
+                })
+                val message = MimeMessage(session)
+                message.setFrom(InternetAddress(SENDER_EMAIL))
+                message.setRecipients(
+                    Message.RecipientType.TO,
+                    InternetAddress.parse(recipientEmail)
+                )
+                message.subject = "🔄 Senha Atualizada: $serviceTitle"
+
+                message.setContent(
+                    generateUpdateHtml(serviceTitle, username), // Chama o novo template de atualização
+                    "text/html; charset=utf-8"
+                )
+
+                Transport.send(message)
+                println("Notificação de senha atualizada enviada para: $recipientEmail")
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("Erro ao enviar notificação de atualização: ${e.message}")
+            }
+        }.start()
+    }
+
+    fun sendDeleteNotification(recipientEmail: String, serviceTitle: String, username: String) {
+        Thread {
+            try {
+                // ... (Configuração da sessão SMTP e criação da mensagem MimeMessage) ...
+
+                val props = Properties()
+                props["mail.smtp.auth"] = "true"
+                props["mail.smtp.starttls.enable"] = "true"
+                props["mail.smtp.host"] = SMTP_HOST
+                props["mail.smtp.port"] = SMTP_PORT
+
+                // 1. Cria a sessão de e-mail
+                val session = Session.getInstance(props, object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication {
+                        return PasswordAuthentication(SENDER_EMAIL, SENDER_PASSWORD)
+                    }
+                })
+                val message = MimeMessage(session)
+                message.setFrom(InternetAddress(SENDER_EMAIL))
+                message.setRecipients(
+                    Message.RecipientType.TO,
+                    InternetAddress.parse(recipientEmail)
+                )
+                message.subject = "🗑️ Senha Excluída: $serviceTitle"
+
+                message.setContent(
+                    generateDeleteHtml(serviceTitle, username), // Chama o novo template de exclusão
+                    "text/html; charset=utf-8"
+                )
+
+                Transport.send(message)
+                println("Notificação de senha excluída enviada para: $recipientEmail")
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("Erro ao enviar notificação de exclusão: ${e.message}")
+            }
+        }.start()
+    }
+
     fun generateHtmlContent(): String {
         return """
         <!DOCTYPE html>
@@ -186,6 +266,74 @@ object EmailService {
                     <p>SaveKey | Sua segurança, nossa prioridade.</p>
                 </div>
             </div>
+        </body>
+        </html>
+    """.trimIndent()
+    }
+
+    fun generateUpdateHtml(serviceTitle: String, username: String): String {
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                /* Estilos similares aos templates anteriores */
+                .header { background-color: #ffc107; color: #333; padding: 20px; text-align: center; } /* Amarelo para Ação */
+                .content { padding: 30px; line-height: 1.6; color: #333333; }
+                .detail-box { background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 4px; margin-top: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔄 Senha do Serviço Atualizada no SaveKey</h2>
+                </div>
+                <div class="content">
+                    <p>O registro para o serviço abaixo foi **atualizado** em seu cofre SaveKey.</p>
+                    
+                    <h3>Detalhes:</h3>
+                    <div class="detail-box">
+                        <p><strong>Serviço:</strong> $serviceTitle</p>
+                        <p><strong>Usuário:</strong> $username</p>
+                    </div>
+
+                    <p style="margin-top: 25px;">Se você não realizou esta atualização, acesse seu cofre imediatamente e mude a senha mestra.</p>
+                </div>
+                </div>
+        </body>
+        </html>
+    """.trimIndent()
+    }
+
+    fun generateDeleteHtml(serviceTitle: String, username: String): String {
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                /* Estilos similares aos templates anteriores */
+                .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; } /* Vermelho para Exclusão */
+                .content { padding: 30px; line-height: 1.6; color: #333333; }
+                .detail-box { background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 4px; margin-top: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🗑️ Registro Excluído do SaveKey</h2>
+                </div>
+                <div class="content">
+                    <p>O registro para o serviço abaixo foi **excluído permanentemente** do seu cofre SaveKey.</p>
+                    
+                    <h3>Registro Excluído:</h3>
+                    <div class="detail-box">
+                        <p><strong>Serviço:</strong> $serviceTitle</p>
+                        <p><strong>Usuário:</strong> $username</p>
+                    </div>
+
+                    <p style="margin-top: 25px;">Se você não excluiu este registro, verifique a segurança da sua conta imediatamente.</p>
+                </div>
+                </div>
         </body>
         </html>
     """.trimIndent()

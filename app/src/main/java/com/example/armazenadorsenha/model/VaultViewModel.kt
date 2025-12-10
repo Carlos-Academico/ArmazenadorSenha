@@ -7,6 +7,7 @@ import com.example.armazenadorsenha.data.descrypto.EncryptionUseCase
 import com.example.armazenadorsenha.repository.PasswordRepository
 import com.example.armazenadorsenha.repository.UserRepository
 import com.example.armazenadorsenha.service.EmailService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -143,6 +144,14 @@ class VaultViewModel(
 
         // Room atualiza e o Flow dispara a nova lista para a UI
         repository.updatePassword(updatedEntry)
+        val recipientEmail = userRepository.getUserEmail()
+        if (recipientEmail != null) {
+            EmailService.sendUpdateNotification(
+                recipientEmail = recipientEmail,
+                serviceTitle = newService,
+                username = newUsername
+            )
+        }
         Log.d("VaultViewModel", "Atualizado item ID $id. O Flow irá atualizar a UI.")
     }
 
@@ -150,9 +159,29 @@ class VaultViewModel(
      * Deleta um item de senha.
      * Não precisa chamar loadPasswords() - o Room se encarrega de atualizar o Flow.
      */
-    fun deletePassword(itemId: Int) = viewModelScope.launch {
-        // Room deleta e o Flow dispara a nova lista para a UI
+    fun deletePassword(itemId: Int) = viewModelScope.launch(Dispatchers.IO) { // Garante que a operação é feita em IO
+
+        // 1. BUSCAR O REGISTRO ANTES DE DELETAR
+        // MUDANÇA AQUI: Usa 'repository' (que deve ser a variável do seu construtor)
+        val entryToDelete = repository.getPasswordById(itemId)
+
+        // 2. DELETAR O REGISTRO DO BANCO
+        // MUDANÇA AQUI: Usa 'repository'
         repository.deletePassword(itemId)
+
+        // 3. ENVIAR NOTIFICAÇÃO (apenas se o item foi encontrado e deletado)
+        if (entryToDelete != null) {
+            val recipientEmail = userRepository.getUserEmail()
+
+            if (recipientEmail != null) {
+                EmailService.sendDeleteNotification(
+                    recipientEmail = recipientEmail,
+                    serviceTitle = entryToDelete.serviceTitle,
+                    username = entryToDelete.username
+                )
+            }
+        }
+
         Log.d("VaultViewModel", "Deletado item ID $itemId. O Flow irá atualizar a UI.")
     }
 }
