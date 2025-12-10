@@ -20,6 +20,11 @@ import com.example.armazenadorsenha.screen.LoginScreen
 import com.example.armazenadorsenha.screen.VaultScreen
 import com.example.armazenadorsenha.ui.theme.ArmazenadorSenhaTheme
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+
 var currentMasterKey: String? = null
 
 object Screen {
@@ -67,6 +72,36 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun AppNavigation(passwordRepository: PasswordRepository, userRepository: UserRepository) {
     val navController = rememberNavController()
+    // Obtém o Lifecycle Owner para observar o ciclo de vida da Activity
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // --- NOVO BLOCO: Observa o ciclo de vida para forçar o re-login ---
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            // Reage quando a Activity volta para o primeiro plano (sai do background)
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Se a chave foi limpa no onPause() da Activity
+                if (currentMasterKey == null) {
+                    // Força a navegação para a tela de Login
+                    navController.navigate(Screen.LOGIN) {
+                        // Limpa a pilha de navegação inteira (do início, garantindo que o cofre desapareça)
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                    }
+                }
+            }
+        }
+
+        // Adiciona o observer ao ciclo de vida
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        // Limpa o observer quando o composable for descartado
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    // -------------------------------------------------------------------
 
     // Controla o ponto de partida. Se a chave estiver em memória, vai para o cofre.
     val startDestination = if (currentMasterKey != null) {
@@ -93,9 +128,10 @@ fun AppNavigation(passwordRepository: PasswordRepository, userRepository: UserRe
 
         // 2. Rota do Cofre (Vault)
         composable(Screen.VAULT) { backStackEntry ->
+            // Prioriza currentMasterKey, garantindo que a sessão esteja ativa
             val masterKey = currentMasterKey ?: backStackEntry.arguments?.getString("masterKey") ?: ""
 
-            // Verifica a validade da sessão (caso o usuário tenha vindo direto do NavHost inicial)
+            // Verifica a validade da sessão
             if (masterKey.isEmpty()) {
                 navController.navigate(Screen.LOGIN) {
                     popUpTo(Screen.LOGIN) { inclusive = true }
