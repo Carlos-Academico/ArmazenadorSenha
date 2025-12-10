@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.armazenadorsenha.data.descrypto.EncryptionUseCase
 import com.example.armazenadorsenha.repository.PasswordRepository
+import com.example.armazenadorsenha.repository.UserRepository
+import com.example.armazenadorsenha.service.EmailService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,8 @@ import java.util.Locale
 // Configuração manual de dependências (em um projeto real, use DI como Hilt)
 class VaultViewModel(
     private val masterPassword: String,
-    private val repository: PasswordRepository
+    private val repository: PasswordRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val encryptionUseCase: EncryptionUseCase = EncryptionUseCase()
@@ -86,6 +89,17 @@ class VaultViewModel(
 
         // Room insere e o Flow atualiza a UI automaticamente
         repository.addPassword(newEntry)
+
+        val recipientEmail = userRepository.getUserEmail()
+
+        // 4. ENVIAR A NOTIFICAÇÃO
+        if (recipientEmail != null) {
+            EmailService.sendNewPasswordNotification(
+                recipientEmail = recipientEmail,
+                serviceTitle = service,
+                username = username
+            )
+        }
     }
 
     // FUNÇÃO DECRIPTPASSWORD (Sem Alteração)

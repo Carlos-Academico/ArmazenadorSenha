@@ -4,20 +4,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.armazenadorsenha.model.VaultViewModel
 import com.example.armazenadorsenha.repository.PasswordRepository
+import com.example.armazenadorsenha.repository.UserRepository
 
 class VaultViewModelFactory(
     private val masterKey: String,
-    // ** NOVO: Aceita a instância do Repository (RoomPasswordRepository) **
-    private val repository: PasswordRepository
+    private val passwordRepository: PasswordRepository,
+    private val userRepository: UserRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(VaultViewModel::class.java)) {
-            // ** Injeta a chave e o Repository no ViewModel **
+
+            // CORREÇÃO: Usar os nomes de parâmetros esperados pelo VaultViewModel
             return VaultViewModel(
-                masterPassword = masterKey,
-                repository = repository
+                masterPassword = masterKey,          // <-- AJUSTADO: De 'masterKey' para 'masterPassword'
+                repository = passwordRepository,     // <-- AJUSTADO: De 'passwordRepository' para 'repository'
+                userRepository = userRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -20,4 +20,9 @@ class UserRepository(private val userDao: UserDao) {
     suspend fun updateBiometricSetting(enabled: Boolean) {
         userDao.updateBiometricSetting(enabled)
     }
+
+    suspend fun getUserEmail(): String? {
+        // Assume que getUserConfig() já retorna o objeto UserConfig com o campo 'email'
+        return userDao.getUserConfig()?.email
+    }
 }

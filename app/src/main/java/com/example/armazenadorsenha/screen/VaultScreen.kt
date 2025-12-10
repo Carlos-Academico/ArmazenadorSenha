@@ -27,6 +27,7 @@ import com.example.armazenadorsenha.model.VaultViewModel
 import com.example.armazenadorsenha.Screen // Certifique-se de que o objeto Screen está aqui
 import com.example.armazenadorsenha.factory.VaultViewModelFactory
 import com.example.armazenadorsenha.repository.PasswordRepository
+import com.example.armazenadorsenha.repository.UserRepository
 import java.util.Locale
 
 // Factory para criar o VaultViewModel com a masterKey (mantido)
@@ -36,10 +37,17 @@ fun VaultScreen(
     masterKey: String,
     navController: NavController,
     // NOVO PARÂMETRO: Injeta o Repositório, que será passado para a Factory do ViewModel
-    repository: PasswordRepository
+    repository: PasswordRepository,
+    userRepository: UserRepository
 ) {
     // 1. CRIAÇÃO DO VIEWMODEL com a Factory
-    val factory = remember { VaultViewModelFactory(masterKey, repository) }
+    val factory = remember {
+        VaultViewModelFactory(
+            masterKey = masterKey,
+            passwordRepository = repository, // Corrigido para o nome esperado
+            userRepository = userRepository  // NOVO PARÂMETRO PASSADO
+        )
+    }
     val viewModel: VaultViewModel = viewModel(factory = factory)
 
     // 2. OBSERVAÇÃO REATIVA: Coleta o StateFlow 'passwordList' do ViewModel.

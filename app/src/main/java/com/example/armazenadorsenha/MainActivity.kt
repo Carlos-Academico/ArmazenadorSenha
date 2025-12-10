@@ -140,7 +140,8 @@ fun AppNavigation(passwordRepository: PasswordRepository, userRepository: UserRe
                 VaultScreen(
                     masterKey = masterKey,
                     navController = navController,
-                    repository = passwordRepository
+                    repository = passwordRepository,
+                    userRepository = userRepository
                 )
             }
         }
@@ -156,7 +157,8 @@ fun AppNavigation(passwordRepository: PasswordRepository, userRepository: UserRe
                     itemId = itemId,
                     onBack = { navController.popBackStack() },
                     onUpdateSuccess = { navController.popBackStack() },
-                    repository = passwordRepository
+                    repository = passwordRepository,
+                    userRepository = userRepository
                 )
             } else {
                 navController.navigate(Screen.LOGIN) // Redireciona se a sessão cair

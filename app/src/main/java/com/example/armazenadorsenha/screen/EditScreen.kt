@@ -45,6 +45,7 @@ import com.example.armazenadorsenha.model.VaultViewModel
 import com.example.armazenadorsenha.dialog.AddEditPasswordDialog
 import com.example.armazenadorsenha.factory.VaultViewModelFactory
 import com.example.armazenadorsenha.repository.PasswordRepository
+import com.example.armazenadorsenha.repository.UserRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,10 +54,17 @@ fun EditScreen(
     onBack: () -> Unit,
     onUpdateSuccess: () -> Unit,
     masterKey: String,
-    repository: PasswordRepository
+    repository: PasswordRepository,
+    userRepository: UserRepository
 ) {
     // Inicialização do ViewModel com a Factory
-    val factory = remember { VaultViewModelFactory(masterKey, repository) }
+    val factory = remember {
+        VaultViewModelFactory(
+            masterKey = masterKey,
+            passwordRepository = repository, // Corrigido para corresponder ao nome na Factory
+            userRepository = userRepository  // NOVO PARÂMETRO AQUI
+        )
+    }
     val viewModel: VaultViewModel = viewModel(factory = factory)
     // 2. Estados de Carregamento e Interface
     var entryData by remember { mutableStateOf<PasswordData?>(null) }
