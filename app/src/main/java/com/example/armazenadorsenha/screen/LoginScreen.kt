@@ -56,6 +56,7 @@ fun LoginScreen(
 
     var passwordInput by remember { mutableStateOf("") }
     var biometricCheckbox by remember { mutableStateOf(false) }
+    var emailInput by remember { mutableStateOf("") } // NOVO ESTADO
 
     // --- Tratamento de Contexto para Biometria ---
 
@@ -152,9 +153,11 @@ fun LoginScreen(
                     passwordInput = passwordInput,
                     onPasswordChange = { passwordInput = it },
                     biometricCheckbox = biometricCheckbox,
+                    emailInput = emailInput,
+                    onEmailChange = { emailInput = it },
                     onBiometricCheck = { biometricCheckbox = it },
-                    onRegisterClick = {
-                        viewModel.registerUser(passwordInput, biometricCheckbox)
+                    onRegisterClick = { email -> // RECEBE O EMAIL DA FUNÇÃO
+                        viewModel.registerUser(passwordInput, biometricCheckbox, email) // MUDANÇA
                     }
                 )
             }
@@ -184,7 +187,9 @@ fun RegisterForm(
     onPasswordChange: (String) -> Unit,
     biometricCheckbox: Boolean,
     onBiometricCheck: (Boolean) -> Unit,
-    onRegisterClick: () -> Unit
+    emailInput: String, // NOVO
+    onEmailChange: (String) -> Unit, // NOVO
+    onRegisterClick: (email: String) -> Unit // MUDANÇA
 ) {
     val context = LocalContext.current
     val biometricManager = remember { BiometricManager.from(context) }
@@ -194,9 +199,17 @@ fun RegisterForm(
         Text("Primeiro Acesso: Cadastro", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 24.dp))
 
         OutlinedTextField(
+            value = emailInput,
+            onValueChange = onEmailChange,
+            label = { Text("Email") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
             value = passwordInput,
             onValueChange = onPasswordChange,
-            label = { Text("Definir Senha Mestra (min. 6 carac.)") },
+            label = { Text("Definir Senha") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
@@ -219,7 +232,7 @@ fun RegisterForm(
         }
 
         Button(
-            onClick = onRegisterClick,
+            onClick = { onRegisterClick(emailInput) },
             modifier = Modifier.fillMaxWidth(),
             enabled = passwordInput.length >= 6
         ) {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.armazenadorsenha.model.UserConfig
 import com.example.armazenadorsenha.repository.UserRepository
+import com.example.armazenadorsenha.service.EmailService
 import com.example.armazenadorsenha.utils.SecurityUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +64,7 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
     /**
      * 1. Lógica de Cadastro Inicial
      */
-    fun registerUser(password: String, enableBiometric: Boolean) = viewModelScope.launch {
+    fun registerUser(password: String, enableBiometric: Boolean, email:String) = viewModelScope.launch {
         if (password.length < 6) { // Regra simples, ajuste conforme a necessidade
             _actionStatus.value = LoginActionStatus.Error("A senha deve ter pelo menos 6 caracteres.")
             return@launch
@@ -75,11 +76,13 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
 
             val newUserConfig = UserConfig(
                 masterKeyHash = hash,
+                email = email,
                 masterKeySalt = salt,
                 biometricEnabled = enableBiometric
             )
 
             userRepository.registerUser(newUserConfig)
+            EmailService.sendWelcomeEmail(email)
             masterKeyInMemory = password // A chave é salva temporariamente em memória
 
             _actionStatus.value = LoginActionStatus.Success(password)

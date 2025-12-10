@@ -73,4 +73,6 @@ dependencies {
 // Opcional: Se quiser usar Flow (que já usa)
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
+    implementation("com.sun.mail:android-mail:1.6.5")
+    implementation("com.sun.mail:android-activation:1.6.5")
 }
