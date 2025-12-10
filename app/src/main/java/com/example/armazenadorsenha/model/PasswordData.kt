@@ -1,4 +1,4 @@
-package com.example.armazenadorsenha.dao
+package com.example.armazenadorsenha.model
 
 data class PasswordData(
     val id: Int,

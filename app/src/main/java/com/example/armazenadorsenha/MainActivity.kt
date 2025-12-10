@@ -3,27 +3,34 @@ package com.example.armazenadorsenha
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.armazenadorsenha.screen.LoginScreen
+import com.example.armazenadorsenha.screen.VaultScreen
 import com.example.armazenadorsenha.ui.theme.ArmazenadorSenhaTheme
+
+// Definição das rotas
+object Screen {
+    const val LOGIN = "login"
+    const val VAULT = "vault/{masterKey}" // Recebe a Master Key
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             ArmazenadorSenhaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AppNavigation()
                 }
             }
         }
@@ -31,17 +38,33 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun AppNavigation() {
+    val navController = rememberNavController()
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ArmazenadorSenhaTheme {
-        Greeting("Android")
+    NavHost(navController = navController, startDestination = Screen.LOGIN) {
+
+        // 1. Rota de Login
+        composable(Screen.LOGIN) {
+            LoginScreen(
+                onLoginSuccess = { masterKey ->
+                    // Navega para a tela do cofre, passando a chave
+                    navController.navigate(Screen.VAULT.replace("{masterKey}", masterKey)) {
+                        popUpTo(Screen.LOGIN) { inclusive = true } // Não permite voltar para o login
+                    }
+                }
+            )
+        }
+
+        // 2. Rota do Cofre (Lista de Senhas)
+        composable(Screen.VAULT) { backStackEntry ->
+            val masterKey = backStackEntry.arguments?.getString("masterKey") ?: ""
+
+            if (masterKey.isEmpty()) {
+                // Se a chave não vier, retorna para o login
+                navController.navigate(Screen.LOGIN)
+            } else {
+                VaultScreen(masterKey = masterKey)
+            }
+        }
     }
 }
