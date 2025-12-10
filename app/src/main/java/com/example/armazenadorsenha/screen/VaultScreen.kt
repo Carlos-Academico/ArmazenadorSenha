@@ -1,6 +1,5 @@
 package com.example.armazenadorsenha.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,36 +13,38 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavController // NOVO IMPORT
 import coil.compose.AsyncImage
 import com.example.armazenadorsenha.R
 import com.example.armazenadorsenha.model.PasswordData
 import com.example.armazenadorsenha.model.VaultViewModel
+import com.example.armazenadorsenha.Screen // Certifique-se de que o objeto Screen está aqui
+import com.example.armazenadorsenha.factory.VaultViewModelFactory
+import com.example.armazenadorsenha.repository.PasswordRepository
 import java.util.Locale
 
-// Factory para criar o VaultViewModel com a masterKey (necessário pois ViewModel tem argumento)
-class VaultViewModelFactory(private val masterKey: String) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(VaultViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return VaultViewModel(masterKey) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
-
+// Factory para criar o VaultViewModel com a masterKey (mantido)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VaultScreen(masterKey: String) {
-    val viewModel: VaultViewModel = viewModel(factory = VaultViewModelFactory(masterKey))
+fun VaultScreen(
+    masterKey: String,
+    navController: NavController,
+    // NOVO PARÂMETRO: Injeta o Repositório, que será passado para a Factory do ViewModel
+    repository: PasswordRepository
+) {
+    // 1. CRIAÇÃO DO VIEWMODEL com a Factory
+    val factory = remember { VaultViewModelFactory(masterKey, repository) }
+    val viewModel: VaultViewModel = viewModel(factory = factory)
+
+    // 2. OBSERVAÇÃO REATIVA: Coleta o StateFlow 'passwordList' do ViewModel.
+    // Qualquer mudança no DB reflete aqui, forçando a recomposição.
     val passwordList by viewModel.passwordList.collectAsState()
-    val context = LocalContext.current
 
     var showAddDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -68,10 +69,11 @@ fun VaultScreen(masterKey: String) {
         Column(modifier = Modifier.padding(padding)) {
 
             // Campo de Pesquisa
-            TextField(
+            OutlinedTextField(
                 value = searchQuery,
                 onValueChange = {
                     searchQuery = it
+                    // Chama o método no ViewModel que atualiza o Flow de pesquisa
                     viewModel.filterPasswords(it)
                 },
                 label = { Text("Buscar Serviço ou Usuário") },
@@ -82,20 +84,21 @@ fun VaultScreen(masterKey: String) {
                 singleLine = true
             )
 
-            // Lista de Senhas (LazyColumn substitui o RecyclerView)
+            // Lista de Senhas
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 'passwordList' já contém a lista filtrada e atualizada pelo Flow
                 items(passwordList, key = { it.id }) { password ->
                     PasswordItem(
                         password = password,
+                        // LÓGICA DE NAVEGAÇÃO para a tela de Edição
                         onViewClicked = { entry ->
-                            showEditDialog(
-                                context = context,
-                                entry = entry,
-                                viewModel = viewModel
-                            )
+                            val route = Screen.EDIT
+                                .replace("{masterKey}", masterKey)
+                                .replace("{itemId}", entry.id.toString())
+                            navController.navigate(route)
                         }
                     )
                 }
@@ -104,16 +107,23 @@ fun VaultScreen(masterKey: String) {
     }
 
     if (showAddDialog) {
+        // Seu Diálogo para Adição
         AddEditPasswordDialog(
             isEdit = false,
+            entry = null,
             onDismiss = { showAddDialog = false },
             onConfirm = { service, username, password ->
+                // O ViewModel faz a inserção, e o Flow atualiza a lista automaticamente.
                 viewModel.addNewPassword(service, username, password)
                 showAddDialog = false
             }
         )
     }
 }
+
+// ----------------------------------------------------------------------------------
+// ** Funções Composable Auxiliares **
+// ----------------------------------------------------------------------------------
 
 @Composable
 fun PasswordItem(password: PasswordData, onViewClicked: (PasswordData) -> Unit) {
@@ -128,12 +138,11 @@ fun PasswordItem(password: PasswordData, onViewClicked: (PasswordData) -> Unit) 
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Mapeamento de Icone (Simplificado, idealmente no ViewModel/UseCase)
             val iconResId = when (password.serviceTitle.lowercase(Locale.ROOT)) {
                 "netflix" -> R.drawable.ic_netflix_logo
                 "google", "gmail" -> R.drawable.ic_google_logo
                 "amazon" -> R.drawable.ic_logo_amazon_simples
-                else -> R.drawable.ic_default_lock // Ícone padrão
+                else -> R.drawable.ic_default_lock
             }
 
             AsyncImage(
@@ -152,25 +161,16 @@ fun PasswordItem(password: PasswordData, onViewClicked: (PasswordData) -> Unit) 
     }
 }
 
-// ----------------------------------------------------
-// Diálogos (Simulando o showAddPasswordDialog e onViewClicked)
-// ----------------------------------------------------
-
-// Dialogo de Adição/Edição
 @Composable
 fun AddEditPasswordDialog(
     isEdit: Boolean,
     entry: PasswordData? = null,
     onDismiss: () -> Unit,
     onConfirm: (service: String, username: String, password: String) -> Unit,
-    onDelete: (() -> Unit)? = null
 ) {
     var service by remember { mutableStateOf(entry?.serviceTitle ?: "") }
     var username by remember { mutableStateOf(entry?.username ?: "") }
-    var password by remember { mutableStateOf(if (isEdit) "" else "") }
-
-    // Se for edição, a senha será preenchida na chamada da função showEditDialog
-    // mas aqui deixamos em branco para o usuário digitar, por segurança.
+    var password by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -182,7 +182,7 @@ fun AddEditPasswordDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text(if(isEdit) "Nova Senha (ou atual)" else "Senha") },
+                    label = { Text(if(isEdit) "Nova Senha" else "Senha") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password
@@ -196,7 +196,7 @@ fun AddEditPasswordDialog(
                     if (service.isNotBlank() && password.isNotBlank()) {
                         onConfirm(service, username, password)
                     } else {
-                        // Idealmente, mostraria um erro na tela
+                        // Implementar lógica de erro/snackbar
                     }
                 }
             ) {
@@ -204,26 +204,7 @@ fun AddEditPasswordDialog(
             }
         },
         dismissButton = {
-            Row {
-                if (isEdit && onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("EXCLUIR", color = MaterialTheme.colorScheme.error) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                TextButton(onClick = onDismiss) { Text("FECHAR") }
-            }
+            TextButton(onClick = onDismiss) { Text("FECHAR") }
         }
     )
-}
-
-// Função auxiliar que gerencia a descriptografia e a exibição do diálogo de Edição
-fun showEditDialog(context: android.content.Context, entry: PasswordData, viewModel: VaultViewModel) {
-    try {
-        val decryptedPassword = viewModel.decryptPassword(entry)
-
-        // Simulação da lógica de diálogo de edição, mostrando a senha descriptografada
-        Toast.makeText(context, "Senha Descriptografada: $decryptedPassword", Toast.LENGTH_LONG).show()
-
-    } catch (e: Exception) {
-        Toast.makeText(context, "Falha de segurança ao descriptografar.", Toast.LENGTH_SHORT).show()
-    }
 }

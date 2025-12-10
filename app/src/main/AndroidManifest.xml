@@ -13,18 +13,13 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ArmazenadorSenha">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
+            android:theme="@style/Theme.ArmazenadorSenha"
+            android:windowSoftInputMode="adjustResize"
+            android:isGame="true"> <intent-filter>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent-filter>
         </activity>
-
-        <activity
-            android:name=".VaultActivity"
-            android:exported="false"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.ArmazenadorSenha" />
 
     </application>
 
