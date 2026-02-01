@@ -75,4 +75,10 @@ dependencies {
     implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
     implementation("com.sun.mail:android-mail:1.6.5")
     implementation("com.sun.mail:android-activation:1.6.5")
+    // Api
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Coil para carregar imagens
+    implementation("io.coil-kt:coil:2.5.0")
 }

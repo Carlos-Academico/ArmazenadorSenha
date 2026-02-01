@@ -3,6 +3,7 @@ package com.example.armazenadorsenha.model
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.armazenadorsenha.api.RetrofitClient
 import com.example.armazenadorsenha.data.descrypto.EncryptionUseCase
 import com.example.armazenadorsenha.repository.PasswordRepository
 import com.example.armazenadorsenha.repository.UserRepository
@@ -78,22 +79,35 @@ class VaultViewModel(
     fun addNewPassword(service: String, username: String, plainPassword: String) = viewModelScope.launch {
         if (service.isBlank() || plainPassword.isBlank()) return@launch
 
+        // 1. CRIPTOGRAFIA (Permanece igual)
         val (encryptedPass, iv) = encryptionUseCase.encrypt(plainPassword, masterPassword)
 
         val newEntry = PasswordData(
-            id = 0,
             serviceTitle = service,
             username = username,
             encryptedPasswordBase64 = encryptedPass,
             ivBase64 = iv
+            // imageUrl começará nulo aqui
         )
 
-        // Room insere e o Flow atualiza a UI automaticamente
-        repository.addPassword(newEntry)
+        try {
+            // 2. MIDDLEWARE (Retrofit): Envia para a API Python (FastAPI)
+            // A API deve processar e retornar o objeto com o campo 'imageUrl' preenchido
+            val savedEntryFromApi = RetrofitClient.instance.savePassword(newEntry)
 
+            // 3. BANCO LOCAL (Room): Salva o objeto QUE VEIO DA API (já com a imagem)
+            repository.addPassword(savedEntryFromApi)
+
+            Log.d("VaultViewModel", "Sincronizado com API e salvo no Room com imagem: ${savedEntryFromApi.imageUrl}")
+
+        } catch (e: Exception) {
+            // Caso a API esteja offline, salvamos apenas localmente para o app não travar
+            Log.e("VaultViewModel", "Falha na API: ${e.message}. Salvando apenas local.")
+            repository.addPassword(newEntry)
+        }
+
+        // 4. NOTIFICAÇÃO (Permanece igual)
         val recipientEmail = userRepository.getUserEmail()
-
-        // 4. ENVIAR A NOTIFICAÇÃO
         if (recipientEmail != null) {
             EmailService.sendNewPasswordNotification(
                 recipientEmail = recipientEmail,
@@ -132,29 +146,40 @@ class VaultViewModel(
         newUsername: String,
         newPassword: String
     ) = viewModelScope.launch {
+        // 1. Criptografia
         val (encryptedPass, iv) = encryptionUseCase.encrypt(newPassword, masterPassword)
+
+        // Buscamos o item atual para não perder a imageUrl que já existe
+        val currentEntry = repository.getPasswordById(id)
 
         val updatedEntry = PasswordData(
             id = id,
             serviceTitle = newService,
             username = newUsername,
             encryptedPasswordBase64 = encryptedPass,
-            ivBase64 = iv
+            ivBase64 = iv,
+            imageUrl = currentEntry?.imageUrl // Mantém a imagem atual
         )
 
-        // Room atualiza e o Flow dispara a nova lista para a UI
-        repository.updatePassword(updatedEntry)
+        try {
+            // 2. Sincroniza com a API (Método PUT)
+            RetrofitClient.instance.updatePassword(id, updatedEntry)
+
+            // 3. Atualiza Localmente
+            repository.updatePassword(updatedEntry)
+            Log.d("VaultViewModel", "Atualizado na API e no Room.")
+        } catch (e: Exception) {
+            Log.e("VaultViewModel", "Erro ao atualizar na API: ${e.message}")
+            // Opcional: atualizar apenas local se a API falhar
+            repository.updatePassword(updatedEntry)
+        }
+
+        // 4. Notificação de Email
         val recipientEmail = userRepository.getUserEmail()
         if (recipientEmail != null) {
-            EmailService.sendUpdateNotification(
-                recipientEmail = recipientEmail,
-                serviceTitle = newService,
-                username = newUsername
-            )
+            EmailService.sendUpdateNotification(recipientEmail, newService, newUsername)
         }
-        Log.d("VaultViewModel", "Atualizado item ID $id. O Flow irá atualizar a UI.")
     }
-
     /**
      * Deleta um item de senha.
      * Não precisa chamar loadPasswords() - o Room se encarrega de atualizar o Flow.

@@ -5,9 +5,10 @@
     <application
         android:allowBackup="true"
         android:theme="@style/Theme.ArmazenadorSenha"
-        tools:targetApi="31"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
 
         <activity
             android:name=".MainActivity"

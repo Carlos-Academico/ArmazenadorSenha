@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -13,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -25,6 +28,7 @@ import com.example.armazenadorsenha.R
 import com.example.armazenadorsenha.model.PasswordData
 import com.example.armazenadorsenha.model.VaultViewModel
 import com.example.armazenadorsenha.Screen // Certifique-se de que o objeto Screen está aqui
+import com.example.armazenadorsenha.api.PasswordApiService
 import com.example.armazenadorsenha.factory.VaultViewModelFactory
 import com.example.armazenadorsenha.repository.PasswordRepository
 import com.example.armazenadorsenha.repository.UserRepository
@@ -146,24 +150,27 @@ fun PasswordItem(password: PasswordData, onViewClicked: (PasswordData) -> Unit) 
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val iconResId = when (password.serviceTitle.lowercase(Locale.ROOT)) {
-                "netflix" -> R.drawable.ic_netflix_logo
-                "google", "gmail" -> R.drawable.ic_google_logo
-                "amazon" -> R.drawable.ic_logo_amazon_simples
-                else -> R.drawable.ic_default_lock
-            }
-
+            // --- COIL INTEGRADO AQUI ---
             AsyncImage(
-                model = iconResId,
+                // Se a imageUrl estiver vazia, ele usa o ícone de cadeado padrão
+                model = password.imageUrl ?: R.drawable.ic_default_lock,
                 contentDescription = password.serviceTitle,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape), // Opcional: deixa a imagem redonda
+                placeholder = painterResource(R.drawable.ic_default_lock), // Imagem enquanto carrega
+                error = painterResource(R.drawable.ic_default_lock)       // Imagem se der erro
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(password.serviceTitle, style = MaterialTheme.typography.titleMedium)
-                Text(password.username, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    password.username,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
